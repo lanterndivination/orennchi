@@ -522,7 +522,7 @@
 
                 const btn = document.createElement('button');
                 btn.className = `
-                    px-5 py-3 rounded-t-lg font-bold text-sm md:text-base whitespace-nowrap relative transition-colors
+                    px-5 py-3 rounded-t-lg font-bold text-sm md:text-base whitespace-nowrap relative transition-colors flex-shrink-0
                     ${isActive ? 'active-tab shadow-negative' : 'inactive-tab hover:bg-white/80'}
                 `;
                 btn.onclick = () => switchTable(t.id);
@@ -547,7 +547,7 @@
                 const isActive = c.id === selectedCategory;
                 const btn = document.createElement('button');
                 btn.className = `
-                    px-4 py-2 rounded-full text-sm font-bold border transition-all
+                    px-4 py-2 rounded-full text-sm font-bold border transition-all flex-shrink-0
                     ${isActive ? 'bg-orenchi-primary text-white border-orenchi-primary shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:bg-orange-50'}
                 `;
                 btn.textContent = c.name;
