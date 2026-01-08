@@ -106,11 +106,11 @@
     <!-- Main Content Area -->
     <main class="flex-1 flex overflow-hidden relative">
 
-        <!-- Left Column: Menu (PC 2/3, Mobile Full) -->
-        <section class="flex-1 flex flex-col bg-opacity-50 bg-white lg:w-2/3 border-r border-orenchi-primary/20">
+        <!-- Left Column: Menu (PC/Tablet 50%, Mobile Full) -->
+        <section class="flex-1 flex flex-col bg-opacity-50 bg-white md:w-1/2 border-r border-orenchi-primary/20">
             <!-- Category Tabs -->
-            <div class="flex overflow-x-auto whitespace-nowrap p-2 gap-2 bg-orenchi-bg/80 backdrop-blur-sm shadow-sm"
-                id="category-tabs">
+            <div class="flex overflow-x-auto whitespace-nowrap p-2 gap-2 bg-orenchi-bg/80 backdrop-blur-sm shadow-sm scrollbar-hide"
+                id="category-tabs" style="-webkit-overflow-scrolling: touch;">
                 <!-- Categories will be injected here -->
             </div>
 
@@ -130,10 +130,10 @@
         -->
         <section id="bill-panel" class="
             fixed inset-0 z-30 bg-orenchi-bg transform translate-y-full transition-transform duration-300
-            lg:static lg:w-1/3 lg:translate-y-0 lg:bg-white/80 lg:border-l lg:border-orenchi-primary/30 lg:flex lg:flex-col
+            md:static md:w-1/2 md:translate-y-0 md:bg-white/80 md:border-l md:border-orenchi-primary/30 md:flex md:flex-col
         ">
             <!-- Mobile Handle / Toggle Header -->
-            <div class="lg:hidden h-12 bg-orenchi-dark text-orenchi-bg flex items-center justify-between px-4 cursor-pointer"
+            <div class="md:hidden h-12 bg-orenchi-dark text-orenchi-bg flex items-center justify-between px-4 cursor-pointer"
                 onclick="toggleBillPanel()">
                 <span class="font-bold">伝票を見る</span>
                 <span id="mobile-total-preview" class="num-font text-xl">¥0</span>
@@ -196,7 +196,7 @@
         </section>
 
         <!-- Mobile Floating Summary Bar (Always visible on mobile) -->
-        <div class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-orenchi-dark text-white flex items-center justify-between px-4 shadow-lg z-20 cursor-pointer"
+        <div class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-orenchi-dark text-white flex items-center justify-between px-4 shadow-lg z-20 cursor-pointer"
             onclick="toggleBillPanel()">
             <div class="flex flex-col">
                 <span class="text-xs text-gray-300" id="mobile-table-name">テーブル選択</span>
@@ -663,7 +663,7 @@
                 // I will keep the mode as is, just clear items.
 
                 updateBillPanel();
-                if (window.innerWidth < 1024) {
+                if (window.innerWidth < 768) {
                     // Close panel on mobile after checkout
                     if (isBillPanelOpen) toggleBillPanel();
                 }
