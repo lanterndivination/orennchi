@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俺ん家 POS System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'orenchi-bg': '#fdf6e3', // 和紙っぽいオフホワイト
+                        'orenchi-primary': '#b45309', // 琥珀色
+                        'orenchi-dark': '#451a03', // ダークブラウン
+                        'orenchi-accent': '#ef4444', // 朱色
+                        'orenchi-success': '#22c55e', // 緑
+                    },
+                    fontFamily: {
+                        'serif': ['"Zen Old Mincho"', 'serif'],
+                        'sans': ['"Helvetica Neue"', 'Arial', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'paper': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'floating': '0 -4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Zen Old Mincho', serif;
+            background-color: #fdf6e3;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d6cbb3' fill-opacity='0.2'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            color: #451a03;
+        }
+
+        .num-font {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 700;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .active-tab {
+            background-color: #451a03;
+            color: #fdf6e3;
+            border-bottom: 2px solid #b45309;
+        }
+
+        .inactive-tab {
+            background-color: rgba(255, 255, 255, 0.5);
+            color: #451a03;
+        }
+
+        /* アニメーション */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header & Table Tabs -->
+    <header class="flex-none bg-orenchi-bg border-b-2 border-orenchi-primary z-20 shadow-sm">
+        <div class="flex justify-between items-center px-4 py-2">
+            <h1 class="text-2xl font-bold tracking-widest text-orenchi-dark">居酒屋<span
+                    class="text-orenchi-primary mx-1">●</span>俺ん家</h1>
+            <div id="clock" class="text-xl num-font text-orenchi-dark">00:00</div>
+        </div>
+
+        <!-- Table Scroll Container -->
+        <div class="overflow-x-auto whitespace-nowrap px-2 pb-0 scrollbar-hide flex gap-1" id="table-tabs">
+            <!-- Tables will be injected here -->
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Column: Menu (PC 2/3, Mobile Full) -->
+        <section class="flex-1 flex flex-col bg-opacity-50 bg-white md:w-2/3 border-r border-orenchi-primary/20">
+            <!-- Category Tabs -->
+            <div class="flex overflow-x-auto whitespace-nowrap p-2 gap-2 bg-orenchi-bg/80 backdrop-blur-sm shadow-sm"
+                id="category-tabs">
+                <!-- Categories will be injected here -->
+            </div>
+
+            <!-- Menu Grid -->
+            <div class="flex-1 overflow-y-auto p-4" id="menu-grid">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-20 md:pb-4" id="menu-container">
+                    <!-- Menu Items will be injected here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Bill/Orders (PC 1/3, Mobile Hidden/Bottom Sheet) -->
+        <!-- Mobile: Traditionally hidden or floating, but for POS usage, often better to see side-by-side on tablet, or toggle on phone.
+             Requirement says "Mobile: 1 column. Bottom floating panel".
+             So on MD+, it's a permanent sidebar. On small screens, it's covered by menu unless triggered, or distinct area.
+             Let's implement the floating panel trigger for mobile.
+        -->
+        <section id="bill-panel" class="
+            fixed inset-0 z-30 bg-orenchi-bg transform translate-y-full transition-transform duration-300
+            md:static md:w-1/3 md:translate-y-0 md:bg-white/80 md:border-l md:border-orenchi-primary/30 md:flex md:flex-col
+        ">
+            <!-- Mobile Handle / Toggle Header -->
+            <div class="md:hidden h-12 bg-orenchi-dark text-orenchi-bg flex items-center justify-between px-4 cursor-pointer"
+                onclick="toggleBillPanel()">
+                <span class="font-bold">伝票を見る</span>
+                <span id="mobile-total-preview" class="num-font text-xl">¥0</span>
+                <svg class="w-6 h-6 transition-transform" id="bill-toggle-icon" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                </svg>
+            </div>
+
+            <!-- Bill Content -->
+            <div class="flex-1 flex flex-col h-full overflow-hidden">
+                <div class="p-4 border-b border-orenchi-primary/20 bg-orenchi-bg/50 flex justify-between items-center">
+                    <h2 class="text-xl font-bold flex items-center">
+                        <span id="current-table-name" class="mr-2">テーブル未選択</span>
+                        <span
+                            class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300 hidden"
+                            id="late-night-badge">深夜料金</span>
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <label class="flex items-center cursor-pointer">
+                            <span class="text-xs mr-1 font-bold">深夜</span>
+                            <div class="relative">
+                                <input type="checkbox" id="midnight-toggle" class="sr-only"
+                                    onchange="toggleLateNight()">
+                                <div class="w-10 h-6 bg-gray-300 rounded-full shadow-inner transition duration-200 ease-in-out"
+                                    id="midnight-bg"></div>
+                                <div class="dot absolute w-4 h-4 bg-white rounded-full shadow top-1 left-1 transition duration-200 ease-in-out"
+                                    id="midnight-dot"></div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Order List -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-2" id="order-list">
+                    <!-- Orders injected here -->
+                    <div class="text-center text-gray-400 py-10 opacity-70">
+                        <p>注文はまだありません</p>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="p-4 bg-white border-t-2 border-orenchi-primary/30 shadow-floating z-10">
+                    <div class="flex justify-between items-end mb-4">
+                        <span class="text-lg">合計</span>
+                        <span class="text-3xl font-bold text-orenchi-dark num-font" id="total-price">¥0</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="openCustomItemModal()"
+                            class="bg-gray-100 text-orenchi-dark py-3 rounded-lg border border-gray-300 font-bold hover:bg-gray-200 transition">
+                            ＋ 特別注文
+                        </button>
+                        <button onclick="checkout()"
+                            class="bg-orenchi-primary text-white py-3 rounded-lg font-bold shadow-md hover:bg-amber-700 transition flex justify-center items-center">
+                            お会計
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mobile Floating Summary Bar (Always visible on mobile) -->
+        <div class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-orenchi-dark text-white flex items-center justify-between px-4 shadow-lg z-20 cursor-pointer"
+            onclick="toggleBillPanel()">
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-300" id="mobile-table-name">テーブル選択</span>
+                <span class="font-bold flex items-center gap-2">
+                    <span id="mobile-item-count"
+                        class="bg-orenchi-accent text-white text-xs px-1.5 py-0.5 rounded-full">0</span>
+                    点
+                </span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-2xl font-bold num-font" id="mobile-floating-total">¥0</span>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                </svg>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Item Modal -->
+    <div id="custom-modal" class="fixed inset-0 z-50 bg-black/50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm fade-in">
+            <h3 class="text-xl font-bold mb-4 text-center border-b pb-2">特別注文・季節の一品</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-1">商品名</label>
+                    <input type="text" id="custom-name"
+                        class="w-full border-2 border-gray-200 rounded-lg p-2 focus:border-orenchi-primary outline-none"
+                        placeholder="例：旬の天ぷら">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">金額 (税込)</label>
+                    <input type="number" id="custom-price"
+                        class="w-full border-2 border-gray-200 rounded-lg p-2 num-font focus:border-orenchi-primary outline-none"
+                        placeholder="0">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeCustomModal()"
+                    class="flex-1 py-3 bg-gray-200 rounded-lg font-bold text-gray-600">キャンセル</button>
+                <button onclick="submitCustomItem()"
+                    class="flex-1 py-3 bg-orenchi-primary text-white rounded-lg font-bold shadow-md">追加する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Data Definitions ---
+        const tables = [
+            { id: 'c1', name: 'カウンター1' },
+            { id: 'c2', name: 'カウンター2' },
+            { id: 'c3', name: 'カウンター3' },
+            { id: 'tA', name: 'テーブルA' },
+            { id: 'tB', name: 'テーブルB' },
+        ];
+
+        const categories = [
+            { id: 'speed', name: 'スピード' },
+            { id: 'fried', name: '揚げ物' },
+            { id: 'warm', name: '温かい物' },
+            { id: 'rice', name: 'メシ物' },
+            { id: 'drink_beer', name: 'ビール・ハイ' },
+            { id: 'drink_sour', name: 'サワー' },
+            { id: 'drink_cocktail', name: 'カクテル' },
+            { id: 'drink_shochu', name: '焼酎・酒' },
+            { id: 'drink_soft', name: 'ソフトD' },
+        ];
+
+        // Extracted Menu Data
+        const menuData = [
+            // Speed
+            { id: 101, category: 'speed', name: '枝豆', price: 400 },
+            { id: 102, category: 'speed', name: '冷奴', price: 400 },
+            { id: 103, category: 'speed', name: '冷やしトマト', price: 400 },
+            { id: 104, category: 'speed', name: 'オニオンスライス', price: 400 },
+            { id: 105, category: 'speed', name: 'キムチ', price: 500 },
+            { id: 106, category: 'speed', name: 'キムチトマト', price: 500 },
+            { id: 107, category: 'speed', name: 'キムチ奴', price: 500 },
+            { id: 108, category: 'speed', name: '手作りスモークチーズ', price: 500 },
+            { id: 109, category: 'speed', name: 'ブロッコリーの胡麻和え', price: 500 },
+            { id: 110, category: 'speed', name: 'イタリアンポップコーン', price: 500 },
+            { id: 111, category: 'speed', name: 'トリュフ', price: 600 },
+            { id: 112, category: 'speed', name: 'シャインマスカット', price: 600 },
+            { id: 113, category: 'speed', name: 'しそにんにく', price: 600 },
+            { id: 114, category: 'speed', name: 'ソーミンチャンプルー', price: 600 },
+            { id: 115, category: 'speed', name: '山芋のワサビ浅漬', price: 500 },
+            { id: 116, category: 'speed', name: 'ヌカ漬', price: 500 },
+            { id: 117, category: 'speed', name: 'うずら漬け', price: 500 },
+            { id: 118, category: 'speed', name: 'クリームチーズの醤油漬け', price: 500 },
+
+            // Fried
+            { id: 201, category: 'fried', name: '海老せんチップ', price: 500 },
+            { id: 202, category: 'fried', name: 'フライドポテト', price: 500 },
+            { id: 203, category: 'fried', name: 'イカ下足の唐揚げ', price: 600 },
+            { id: 204, category: 'fried', name: '唐揚げ', price: 700 },
+            { id: 205, category: 'fried', name: 'チキンカツ', price: 700 },
+
+            // Warm
+            { id: 301, category: 'warm', name: '鶏の一枚漬焼', price: 800 },
+            { id: 302, category: 'warm', name: '鮪のカマのマース煮', price: 800 },
+            { id: 303, category: 'warm', name: 'だしまき玉子', price: 600 },
+            { id: 304, category: 'warm', name: '牛すじピリ辛煮', price: 600 },
+            { id: 305, category: 'warm', name: 'タコさんウィンナー', price: 500 },
+            { id: 306, category: 'warm', name: 'スモークししゃも', price: 500 },
+
+            // Rice
+            { id: 401, category: 'rice', name: 'カレーうどん', price: 700 },
+            { id: 402, category: 'rice', name: '俺ん家ラーメン', price: 800 },
+            { id: 403, category: 'rice', name: '俺ん家カレー', price: 800 },
+            { id: 404, category: 'rice', name: '俺のピザ', price: 800 },
+            { id: 405, category: 'rice', name: '気まぐれ茶漬け', price: 700 },
+            { id: 406, category: 'rice', name: '気まぐれパスタ', price: 900 }, // Corrected based on image (900)
+            { id: 407, category: 'rice', name: '親子丼', price: 1000 },
+            { id: 408, category: 'rice', name: '一枚漬焼丼', price: 1000 },
+            { id: 409, category: 'rice', name: 'チキンカツ丼', price: 1000 },
+            { id: 410, category: 'rice', name: 'ジーニーのTKG', price: 600 },
+            { id: 411, category: 'rice', name: 'ライス', price: 300 },
+
+            // Beer & Highball
+            { id: 501, category: 'drink_beer', name: '生ビール 一番搾り', price: 600 },
+            { id: 502, category: 'drink_beer', name: '瓶ビール', price: 600 }, // Assumed
+            { id: 503, category: 'drink_beer', name: 'ハイボール', price: 600 },
+            { id: 504, category: 'drink_beer', name: '角ハイボール', price: 600 },
+            { id: 505, category: 'drink_beer', name: 'ウーロンハイ', price: 500 },
+            { id: 506, category: 'drink_beer', name: '麦茶ハイ', price: 500 },
+            { id: 507, category: 'drink_beer', name: '青汁ハイ', price: 600 },
+
+            // Sour
+            { id: 601, category: 'drink_sour', name: 'プレーンサワー', price: 600 },
+            { id: 602, category: 'drink_sour', name: 'レモンサワー', price: 600 },
+            { id: 603, category: 'drink_sour', name: 'ゆずサワー', price: 600 },
+            { id: 604, category: 'drink_sour', name: '巨峰サワー', price: 600 },
+            { id: 605, category: 'drink_sour', name: 'カルピスサワー', price: 600 },
+
+            // Cocktail
+            { id: 701, category: 'drink_cocktail', name: 'ジントニック', price: 600 },
+            { id: 702, category: 'drink_cocktail', name: 'カシスオレンジ', price: 600 },
+            { id: 703, category: 'drink_cocktail', name: 'カシスウーロン', price: 600 },
+            { id: 704, category: 'drink_cocktail', name: 'ファジーネーブル', price: 600 },
+            { id: 705, category: 'drink_cocktail', name: 'ピーチウーロン', price: 600 },
+            { id: 706, category: 'drink_cocktail', name: 'カルアミルク', price: 600 },
+            { id: 707, category: 'drink_cocktail', name: 'キール', price: 600 },
+            { id: 708, category: 'drink_cocktail', name: 'テキーラサンライズ', price: 600 },
+
+            // Shochu & Sake
+            { id: 801, category: 'drink_shochu', name: '黒霧島(芋)', price: 600 },
+            { id: 802, category: 'drink_shochu', name: '二階堂(麦)', price: 600 },
+            { id: 803, category: 'drink_shochu', name: '鍛高譚(しそ)', price: 600 },
+            { id: 804, category: 'drink_shochu', name: 'ダバダ火振(栗)', price: 600 },
+            { id: 805, category: 'drink_shochu', name: '日本酒 濱乃鶴', price: 600 },
+            { id: 806, category: 'drink_shochu', name: '日本酒 美丈夫', price: 800 },
+            { id: 807, category: 'drink_shochu', name: '梅酒', price: 600 },
+            { id: 808, category: 'drink_shochu', name: '梅こんぶ茶割', price: 600 },
+
+            // Soft Drink
+            { id: 901, category: 'drink_soft', name: 'ウーロン茶', price: 400 },
+            { id: 902, category: 'drink_soft', name: '麦茶', price: 400 },
+            { id: 903, category: 'drink_soft', name: '緑茶', price: 400 },
+            { id: 904, category: 'drink_soft', name: 'コーラ', price: 400 },
+            { id: 905, category: 'drink_soft', name: 'オレンジ', price: 400 },
+            { id: 906, category: 'drink_soft', name: 'ジンジャエール', price: 400 },
+            { id: 907, category: 'drink_soft', name: 'カルピス', price: 400 },
+        ];
+
+
+        // --- State Management ---
+        let currentTableId = 'c1';
+        let selectedCategory = 'speed';
+        let isLateNightMode = false;
+        let isBillPanelOpen = false;
+
+        // orders: { tableId: { itemId: { quantity: num, type: 'regular', ...itemData } } }
+        // Note: For custom items, I'll use a string id starting with 'custom_'
+        let orders = {};
+
+        // customItems: Array of manually added items for current session? 
+        // Better: Custom items are just added directly to orders with special formatting.
+        // But for persistence across renders, we need to know what they are if we want to list them in menu? 
+        // No, custom items are ad-hoc. They go straight to the order list.
+
+        // --- Functions ---
+
+        function init() {
+            // Initialize orders for all tables
+            tables.forEach(t => {
+                if (!orders[t.id]) orders[t.id] = {};
+            });
+
+            startClock();
+            renderTableTabs();
+            renderCategoryTabs();
+            renderMenuGrid();
+            updateBillPanel();
+        }
+
+        function startClock() {
+            const update = () => {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                document.getElementById('clock').textContent = `${hours}:${minutes}`;
+
+                // Auto suggest late night mode if past 2AM (26:00 is not standard Date, standard is 02:00)
+                // Let's keep it manual as per requirement switch
+            };
+            setInterval(update, 1000);
+            update();
+        }
+
+        function switchTable(tableId) {
+            currentTableId = tableId;
+            renderTableTabs();
+            updateBillPanel();
+
+            // On mobile, maybe close bill panel if open? No, keep context.
+            // But update titles
+        }
+
+        function switchCategory(catId) {
+            selectedCategory = catId;
+            renderCategoryTabs();
+            renderMenuGrid();
+        }
+
+        function addToOrder(item) {
+            if (!orders[currentTableId][item.id]) {
+                orders[currentTableId][item.id] = { ...item, quantity: 0 };
+            }
+            orders[currentTableId][item.id].quantity += 1;
+
+            // Visual feedback
+            const card = document.getElementById(`item-card-${item.id}`);
+            if (card) {
+                card.classList.add('ring-2', 'ring-orenchi-primary', 'bg-orange-50');
+                setTimeout(() => card.classList.remove('ring-2', 'ring-orenchi-primary', 'bg-orange-50'), 200);
+            }
+
+            updateBillPanel();
+        }
+
+        function decreaseFromOrder(itemId) {
+            if (orders[currentTableId][itemId]) {
+                orders[currentTableId][itemId].quantity -= 1;
+                if (orders[currentTableId][itemId].quantity <= 0) {
+                    delete orders[currentTableId][itemId];
+                }
+                updateBillPanel();
+            }
+        }
+
+        function toggleLateNight() {
+            const toggle = document.getElementById('midnight-toggle');
+            const bg = document.getElementById('midnight-bg');
+            const dot = document.getElementById('midnight-dot');
+            const badge = document.getElementById('late-night-badge');
+
+            isLateNightMode = toggle.checked;
+
+            if (isLateNightMode) {
+                bg.classList.replace('bg-gray-300', 'bg-indigo-900');
+                dot.classList.replace('translate-x-0', 'translate-x-4');
+                badge.classList.remove('hidden');
+            } else {
+                bg.classList.replace('bg-indigo-900', 'bg-gray-300');
+                dot.classList.replace('translate-x-4', 'translate-x-0');
+                badge.classList.add('hidden');
+            }
+
+            updateBillPanel(); // Recalculate totals
+            renderMenuGrid(); // Update displayed prices if needed (requirement: "Display prices also change dynamically")
+        }
+
+        function toggleBillPanel() {
+            const panel = document.getElementById('bill-panel');
+            const icon = document.getElementById('bill-toggle-icon');
+
+            isBillPanelOpen = !isBillPanelOpen;
+
+            if (isBillPanelOpen) {
+                panel.classList.remove('translate-y-full');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                panel.classList.add('translate-y-full');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // --- Custom Item Modal ---
+        function openCustomItemModal() {
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+        function closeCustomModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            document.getElementById('custom-name').value = '';
+            document.getElementById('custom-price').value = '';
+        }
+        function submitCustomItem() {
+            const name = document.getElementById('custom-name').value;
+            const price = parseInt(document.getElementById('custom-price').value);
+
+            if (!name || isNaN(price)) {
+                alert('商品名と金額を正しく入力してください');
+                return;
+            }
+
+            const customId = 'custom_' + Date.now();
+            const newItem = { id: customId, name: name, price: price, category: 'custom' };
+
+            addToOrder(newItem);
+            closeCustomModeal();
+        }
+
+        // --- Render Functions ---
+
+        function renderTableTabs() {
+            const container = document.getElementById('table-tabs');
+            container.innerHTML = '';
+
+            tables.forEach(t => {
+                const isActive = t.id === currentTableId;
+                const hasOrder = orders[t.id] && Object.keys(orders[t.id]).length > 0;
+
+                const btn = document.createElement('button');
+                btn.className = `
+                    px-5 py-3 rounded-t-lg font-bold text-sm md:text-base whitespace-nowrap relative transition-colors
+                    ${isActive ? 'active-tab shadow-negative' : 'inactive-tab hover:bg-white/80'}
+                `;
+                btn.onclick = () => switchTable(t.id);
+                btn.innerHTML = `
+                    ${t.name}
+                    ${hasOrder ? '<span class="absolute top-1 right-1 text-[8px] text-orenchi-accent">●</span>' : ''}
+                `;
+                container.appendChild(btn);
+            });
+
+            // Update Table Name in Bill Panel
+            const currentName = tables.find(t => t.id === currentTableId).name;
+            document.getElementById('current-table-name').textContent = currentName;
+            document.getElementById('mobile-table-name').textContent = currentName;
+        }
+
+        function renderCategoryTabs() {
+            const container = document.getElementById('category-tabs');
+            container.innerHTML = '';
+
+            categories.forEach(c => {
+                const isActive = c.id === selectedCategory;
+                const btn = document.createElement('button');
+                btn.className = `
+                    px-4 py-2 rounded-full text-sm font-bold border transition-all
+                    ${isActive ? 'bg-orenchi-primary text-white border-orenchi-primary shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:bg-orange-50'}
+                `;
+                btn.textContent = c.name;
+                btn.onclick = () => switchCategory(c.id);
+                container.appendChild(btn);
+            });
+        }
+
+        function renderMenuGrid() {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+
+            const items = menuData.filter(i => i.category === selectedCategory);
+
+            items.forEach(item => {
+                // Calculation for display price (if logic says display price should update)
+                // Logic requirement: "Display prices also dynamically change"
+                let displayPrice = item.price;
+                if (isLateNightMode) {
+                    displayPrice = Math.floor(item.price * 1.1);
+                }
+
+                const card = document.createElement('div');
+                card.id = `item-card-${item.id}`;
+                card.className = 'bg-white rounded-lg shadow-sm border border-gray-100 p-3 flex flex-col justify-between h-32 md:h-36 active:scale-95 transition-transform cursor-pointer hover:shadow-md';
+                card.onclick = (e) => {
+                    // Prevent if clicked on a specific child implementation if needed,
+                    // but here card click adds item.
+                    addToOrder(item);
+                };
+
+                card.innerHTML = `
+                    <div>
+                        <h3 class="font-serif font-bold text-lg leading-tight text-orenchi-dark mb-1 line-clamp-2">${item.name}</h3>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <span class="text-xl font-bold num-font text-orenchi-primary">¥${displayPrice}</span>
+                        <button class="w-8 h-8 rounded-full bg-orenchi-primary text-white flex items-center justify-center shadow-lg hover:bg-amber-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateBillPanel() {
+            const list = document.getElementById('order-list');
+            const totalEl = document.getElementById('total-price');
+            const mobileTotal = document.getElementById('mobile-floating-total');
+            const mobilePreview = document.getElementById('mobile-total-preview');
+            const mobileCount = document.getElementById('mobile-item-count');
+
+            list.innerHTML = '';
+            let total = 0;
+            let count = 0;
+
+            const currentOrders = orders[currentTableId] || {};
+            const orderItems = Object.values(currentOrders);
+
+            if (orderItems.length === 0) {
+                list.innerHTML = `<div class="text-center text-gray-400 py-10 opacity-70"><p>注文はまだありません</p></div>`;
+            } else {
+                orderItems.forEach(item => {
+                    let unitPrice = item.price;
+                    if (isLateNightMode) {
+                        unitPrice = Math.floor(item.price * 1.1);
+                    }
+                    const subtotal = unitPrice * item.quantity;
+                    total += subtotal;
+                    count += item.quantity;
+
+                    const row = document.createElement('div');
+                    row.className = 'flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border-l-4 border-orenchi-primary fade-in';
+                    row.innerHTML = `
+                        <div class="flex-1">
+                            <h4 class="font-bold text-orenchi-dark text-sm md:text-base">${item.name}</h4>
+                            <div class="text-xs text-gray-500 num-font">@${unitPrice} × ${item.quantity}</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold num-font text-lg">¥${subtotal}</span>
+                            <div class="flex flex-col gap-1">
+                                <button onclick="addToOrder({id: '${item.id}', price: ${item.price}, name: '${item.name}'})" class="w-6 h-6 rounded bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-gray-200">＋</button>
+                                <button onclick="decreaseFromOrder('${item.id}')" class="w-6 h-6 rounded bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100">－</button>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(row);
+                });
+            }
+
+            totalEl.textContent = '¥' + total.toLocaleString();
+            mobileTotal.textContent = '¥' + total.toLocaleString();
+            mobilePreview.textContent = '¥' + total.toLocaleString();
+            mobileCount.textContent = count;
+
+            // Also update tab badges
+            renderTableTabs();
+        }
+
+        function checkout() {
+            const currentOrders = orders[currentTableId] || {};
+            if (Object.keys(currentOrders).length === 0) {
+                alert('注文がありません');
+                return;
+            }
+
+            const confirmMsg = `テーブル「${tables.find(t => t.id === currentTableId).name}」のお会計を確定しますか？\n(データはリセットされます)`;
+            if (confirm(confirmMsg)) {
+                orders[currentTableId] = {};
+
+                // Reset late night mode? Maybe keep it as it's a global setting usually?
+                // Requirement says "reset data for target table".
+                // I will keep the mode as is, just clear items.
+
+                updateBillPanel();
+                if (window.innerWidth < 768) {
+                    // Close panel on mobile after checkout
+                    if (isBillPanelOpen) toggleBillPanel();
+                }
+                alert('お会計が完了しました。');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', init);
+
+    </script>
+</body>
+
+</html>
