@@ -107,7 +107,7 @@
     <main class="flex-1 flex overflow-hidden relative">
 
         <!-- Left Column: Menu (PC 2/3, Mobile Full) -->
-        <section class="flex-1 flex flex-col bg-opacity-50 bg-white md:w-2/3 border-r border-orenchi-primary/20">
+        <section class="flex-1 flex flex-col bg-opacity-50 bg-white lg:w-2/3 border-r border-orenchi-primary/20">
             <!-- Category Tabs -->
             <div class="flex overflow-x-auto whitespace-nowrap p-2 gap-2 bg-orenchi-bg/80 backdrop-blur-sm shadow-sm"
                 id="category-tabs">
@@ -116,7 +116,7 @@
 
             <!-- Menu Grid -->
             <div class="flex-1 overflow-y-auto p-4" id="menu-grid">
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-20 md:pb-4" id="menu-container">
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 pb-20 lg:pb-4" id="menu-container">
                     <!-- Menu Items will be injected here -->
                 </div>
             </div>
@@ -130,10 +130,10 @@
         -->
         <section id="bill-panel" class="
             fixed inset-0 z-30 bg-orenchi-bg transform translate-y-full transition-transform duration-300
-            md:static md:w-1/3 md:translate-y-0 md:bg-white/80 md:border-l md:border-orenchi-primary/30 md:flex md:flex-col
+            lg:static lg:w-1/3 lg:translate-y-0 lg:bg-white/80 lg:border-l lg:border-orenchi-primary/30 lg:flex lg:flex-col
         ">
             <!-- Mobile Handle / Toggle Header -->
-            <div class="md:hidden h-12 bg-orenchi-dark text-orenchi-bg flex items-center justify-between px-4 cursor-pointer"
+            <div class="lg:hidden h-12 bg-orenchi-dark text-orenchi-bg flex items-center justify-between px-4 cursor-pointer"
                 onclick="toggleBillPanel()">
                 <span class="font-bold">伝票を見る</span>
                 <span id="mobile-total-preview" class="num-font text-xl">¥0</span>
@@ -196,7 +196,7 @@
         </section>
 
         <!-- Mobile Floating Summary Bar (Always visible on mobile) -->
-        <div class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-orenchi-dark text-white flex items-center justify-between px-4 shadow-lg z-20 cursor-pointer"
+        <div class="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-orenchi-dark text-white flex items-center justify-between px-4 shadow-lg z-20 cursor-pointer"
             onclick="toggleBillPanel()">
             <div class="flex flex-col">
                 <span class="text-xs text-gray-300" id="mobile-table-name">テーブル選択</span>
@@ -277,9 +277,8 @@
             { id: 107, category: 'speed', name: 'キムチ奴', price: 500 },
             { id: 108, category: 'speed', name: '手作りスモークチーズ', price: 500 },
             { id: 109, category: 'speed', name: 'ブロッコリーの胡麻和え', price: 500 },
-            { id: 110, category: 'speed', name: 'イタリアンポップコーン', price: 500 },
-            { id: 111, category: 'speed', name: 'トリュフ', price: 600 },
-            { id: 112, category: 'speed', name: 'シャインマスカット', price: 600 },
+            { id: 110, category: 'speed', name: 'イタリアンポップコーン(トリュフ)', price: 600 },
+            { id: 111, category: 'speed', name: 'イタリアンポップコーン(マスカット)', price: 600 },
             { id: 113, category: 'speed', name: 'しそにんにく', price: 600 },
             { id: 114, category: 'speed', name: 'ソーミンチャンプルー', price: 600 },
             { id: 115, category: 'speed', name: '山芋のワサビ浅漬', price: 500 },
@@ -344,6 +343,7 @@
             // Shochu & Sake
             { id: 801, category: 'drink_shochu', name: '黒霧島(芋)', price: 600 },
             { id: 802, category: 'drink_shochu', name: '二階堂(麦)', price: 600 },
+            { id: 809, category: 'drink_shochu', name: '天誅(芋)', price: 600 },
             { id: 803, category: 'drink_shochu', name: '鍛高譚(しそ)', price: 600 },
             { id: 804, category: 'drink_shochu', name: 'ダバダ火振(栗)', price: 600 },
             { id: 805, category: 'drink_shochu', name: '日本酒 濱乃鶴', price: 600 },
@@ -663,7 +663,7 @@
                 // I will keep the mode as is, just clear items.
 
                 updateBillPanel();
-                if (window.innerWidth < 768) {
+                if (window.innerWidth < 1024) {
                     // Close panel on mobile after checkout
                     if (isBillPanelOpen) toggleBillPanel();
                 }
